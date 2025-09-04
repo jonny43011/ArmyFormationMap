@@ -287,7 +287,7 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.CheckInList.sizePolicy().hasHeightForWidth())
         self.CheckInList.setSizePolicy(sizePolicy)
-        self.CheckInList.setMinimumSize(QtCore.QSize(491, 416))
+        self.CheckInList.setMinimumSize(QtCore.QSize(210, 210))
         font = QtGui.QFont()
         font.setFamily("微軟正黑體")
         font.setPointSize(15)
