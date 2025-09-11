@@ -1,0 +1,1299 @@
+{% extends "_Default.html" %}
+
+{% block main %}
+
+<script src="{{ url_for('static', filename='vendors/AUOSheetChipLayout/AUOSheetChipLayout.js') }}" crossorigin="anonymous"></script>
+
+<style>
+	.content-wrapper {
+		padding: 1rem 2.25rem;
+	}
+	.tooltip-custom .tooltip-inner{
+		max-width: 100% !important;
+   	}
+   	.tooltip-custom .tooltip{
+		opacity: 1 !important;
+	}
+	.tooltip{
+		opacity: 1 !important; /* 強制設不透明 */
+	}
+
+	div.dt-buttons {
+		float: right;
+	}
+
+	.highlight{
+      background-color: #f3cffa !important;
+	  --bs-table-hover-bg: #f3cffa !important;
+    }
+	
+	#map {
+		width: 98%;
+		height: 70vh;
+		cursor: crosshair;
+	}
+</style>
+
+<script>
+</script>
+
+<div class="row">
+	<div class="col-12 grid-margin">
+		
+		<div class="row">
+			
+			<!-- AY1 讀檔 -->
+			<div class="card col-12 grid-margin">
+				<div class="card-body">
+					
+					<div class="card-title">
+						<div class="row">
+							<div class="col-12 text-start row">
+								<h4><i class="fa-solid fa-list"></i> AVMAP LOT List</h4>
+								<div class="form-group col-lg-12 col-md-12 col-sm-12">
+									<table id="HoldAvmapDataTable" class="table table-hover responsive table-striped"></table>
+								</div>
+							</div>
+							<div class="col-7 text-start row">
+								<div class="col-12 text-start">
+									<h4><i class="mdi mdi-table"></i> 讀取 AY1 檔案</h4>
+								</div>
+								<div class="col-12 text-start row">
+									<div class="form-group col-lg-4 col-md-6 col-sm-12">
+										<label>LOT ID:</label>
+										<input type="text" class="form-control" id="LOT_ID" placeholder="請輸入Lot ID"/>
+									</div>
+
+									<div class="form-group col-lg-4 col-md-6 col-sm-12">
+										<input class="form-check-input mt-4 mb-3" type="checkbox" value="" id="DefMod" checked>
+										<label class="form-check-label mt-4 mb-3" for="DefMod">
+											<h4>過濾點Defect</h4>
+										</label>
+									</div>
+									
+									<div class="form-group col-lg-2 col-md-6 col-sm-12">
+										<button type="button" class="form-control btn btn-info mt-4 mb-3" onclick="selectAY1Data()">
+											<i class="fa-solid fa-magnifying-glass"></i> 查詢
+										</button>
+									</div>
+									<div class="form-group col-lg-2 col-md-6 col-sm-12">
+										<a href="..{{request.full_path}}" class="form-control btn btn-danger mt-4 mb-3">
+											<i class="fas fa-undo-alt"></i> </a>
+									</div>
+								</div>
+							</div>
+							<hr>
+							<div class="form-group col-12 row" id="AY1Data_Div" style="display: none;">
+								<div class="form-group col-12">
+									<h6 class="rounded text-center alert-primary"><i class="fa fa-angle-double-left"></i> AY1 資訊 <i class="fa fa-angle-double-right"></i></h6>
+									<i id="AY1DataQueryResult"></i>
+									<table id="AY1DataTable" class="table table-hover responsive table-striped"></table>
+								</div>
+								
+								<!-- <div class="form-group col-2">
+									<button type="button" class="form-control btn btn-success mt-4 mb-3" onclick="saveAY1Data()">
+										<i class="mdi mdi-content-save-all"></i> 儲存檔案
+									</button>
+								</div> -->
+							</div>
+
+						</div>
+					</div>
+
+				</div>
+				
+			</div>
+			
+
+		</div>
+
+	</div>
+
+</div>
+
+<!-- 檢視 Row Date -->
+<div class="modal fade" id="ImageViewerModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" style="font-size:16px;max-width:95%">
+		<div class="modal-content">
+			<div class="modal-header" style="padding: 0.5rem 1rem;">
+				<h4 class="modal-title"><i class="mdi mdi-table"></i> AVMAP 大圖 (<h4 id="ImageViewerTitle"></h4>)</h4>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<hr>
+				<input type="hidden" id="ImageViewerRowIndex" value="0">
+				<input type="hidden" id="ImageViewerRowData" value="">
+				<div class="row">
+					<div class="col-4 row">
+						
+						<div class="col-8 text-center mb-3">
+							<div id="ChangeMTPGroup" class="btn-group" role="group" aria-label="Basic radio toggle button group"></div>
+						</div>
+						<div class="col-4 text-center mb-3">
+							<select id="imagePRocessingDD" class="form-control selectpicker" data-live-search="false" data-actions-box="true" title="">
+								<option value="原圖">原圖</option>
+								<option value="銳化">銳化</option>
+								<option value="灰階">灰階</option>
+							</select>
+							<!-- <div class="dropdown">
+								<button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">
+									<i class="fa-solid fa-palette"></i>
+								</button>
+								<div class="dropdown-menu">
+									<a class="dropdown-item" onclick="switchImage('', '原圖')">原圖</a>
+									<a class="dropdown-item" onclick="switchImage('', '銳化')">銳化</a>
+								</div>
+							</div> -->
+						</div>
+
+						<div class="form-group col-lg-4 col-md-6 col-sm-12">
+							<label>X:</label>
+							<input type="number" class="form-control" id="inputX" min="0" max="11520" placeholder="請輸入座標X"/>
+						</div>
+
+						<div class="form-group col-lg-4 col-md-6 col-sm-12">
+							<label>Y:</label>
+							<input type="number" class="form-control" id="inputY" min="0" max="2160" placeholder="請輸入座標Y"/>
+						</div>
+						
+						<div class="form-group col-lg-4 col-md-6 col-sm-12">
+							<button type="button" class="form-control btn btn-info mt-4 mb-3" onclick="moveToCoordinate('', '')">
+								<i class="fa-solid fa-compress"></i> 移動
+							</button>
+						</div>
+
+					</div>
+					
+					<div class="col-7 text-start row">
+
+						<!-- 點擊清單 -->
+						<div class="form-group col-lg-12 col-md-6 col-sm-12">
+							<label>點擊清單：</label>
+							<ul id="pointItems" class="rounded rounded-lg" style="background: rgba(221, 221, 221, 0.9); max-height: 105px; overflow-x: hidden; overflow-y: auto; padding-left: 20px; margin: 0;"></ul>
+						</div>
+
+					</div>
+					
+					<div class="col-1 text-start row">
+						<button type="button" id="ImageViewerAddBT" class="form-control btn btn-success mb-3" style="display: none;" onclick="ImageViewerAddPoint()">
+							<i class="fa-solid fa-plus"></i> 加點
+						</button>
+					</div>
+					
+					<div class="col-12 text-center row" style="margin: auto;">
+						<div class="rounded rounded-lg" id="map"></div>
+					</div>
+
+				</div>
+
+				<hr>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉視窗</button>
+			</div>
+		</div>
+	</div>
+</div>
+<!-- -->
+
+
+<script>
+	// 啟動載入
+	$(document).ready(function () {
+		
+		window.map = null	
+		window.currentOverlay = null; // 記錄目前圖片 Overlay
+
+		// 調色盤切換
+		const imagePRocessingDDSelectElement = document.getElementById('imagePRocessingDD');
+
+		imagePRocessingDDSelectElement.addEventListener('change', function() {
+			const selectedValue = this.value;
+			switchImage('', selectedValue)
+		});
+
+		// 
+		runHoldAvmapDataTable()
+
+	});
+
+	function selectAY1Data(){
+		// $('#loading').fadeIn('slow');
+		LOTID = document.getElementById('LOT_ID').value
+		DefMod = document.getElementById('DefMod').checked
+		console.log(DefMod)
+		if (LOTID != ''){
+			$.ajax({
+				method: 'get',
+				url: `./AVMap_AY1Modify/GetData?getType=GetAY1Data&LOTID=${LOTID}&DefMod=${DefMod}`,
+				dataType: 'json',
+				beforeSend: function() {
+					$('#loading').fadeIn('slow');
+				},
+				success: function (data) {
+					if (data.alarm_type == 'error'){
+						swal.fire({
+							title: "錯誤",
+							text: data.alarm_msg,
+							icon: data.alarm_type,
+							showCancelButton: false,
+						})
+					} else {
+						document.getElementById('AY1Data_Div').style.display = ''
+						runAY1DataTable(data.ResultData)
+					}
+					
+					$('#loading').fadeOut('slow');
+				}
+			});
+		} else {
+			swal.fire({
+				title: "資料填寫不完整",
+				text: "請確認是否填寫LOT ID!!!",
+				icon: "warning",
+				showCancelButton: false,
+			})
+		}
+		
+		// $('#loading').fadeOut('slow');
+	}
+
+	// AY1 資訊
+	function runAY1DataTable(data){
+		// 在重新渲染表格前先清空表格內容
+		if ($.fn.DataTable.isDataTable(`#AY1DataTable`)) {
+			$(`#AY1DataTable`).DataTable().destroy();
+			$(`#AY1DataTable`).empty();
+		} 
+		$('#AY1DataTable').attr('class', '')
+		$('#AY1DataTable').addClass("table table-hover responsive");  // table-striped
+		var table = $('#AY1DataTable').DataTable({"preXhr": function ( e, settings, data ) {
+				$('#loading').fadeIn('slow');
+			},
+			//responsive: true,
+			retrieve: false,
+			destroy: true,
+			paging: false, // 關閉分頁功能
+			autoWidth: true,
+			scrollX: true,
+			// scrollY: 500,
+			// sScrollY: 'calc(100vh - 420px)',
+			dom: "<'row'<'col-12 text-end'B>>" + "<'table-responsive' tr>",
+			order: [
+				[1, "asc"], [2, "asc"], [3, "asc"], [4, "asc"], [5, "asc"], [6, "asc"]
+			],
+			buttons: [
+				// {
+				// 	"text": '<i class="fa fa-plus-circle"></i>  新增一行',
+				// 	"className": 'btn btn-info',
+				// 	"action": function() {
+				// 		addDataTableRowData()
+				// 	}
+				// },
+				{
+					"text": '<i class="mdi mdi-content-save-all"></i>  儲存檔案',
+					"className": 'btn btn-success',
+					"action": function() {
+						saveAY1Data()
+					}
+				}
+			],
+			data: data,
+			columns: [
+				// { title: "刪除", data: null, className: "text-center", render: function(data, type, row, meta) {
+				// 	return `
+				// 		<button class="AY1-delete-btn btn btn-sm btn-danger"><i class="mdi mdi-delete"></i></button>
+				// 		<input type="hidden" class="form-control" name="X_CORD_info" value="${data.X_CORD}"/>
+				// 		<input type="hidden" class="form-control" name="Y_CORD_info" value="${data.Y_CORD}"/>
+				// 		<input type="hidden" class="form-control" name="TARJudge_info" value="${data.TARJudge}"/>
+				// 		<input type="hidden" class="form-control" name="RATIO_info" value="${data.RATIO}"/>
+				// 		<input type="hidden" class="form-control" name="CHIP_SEQ_NO_info" value="${data.CHIP_SEQ_NO}"/>
+				// 		<input type="hidden" class="form-control" name="Mode_info" value="${data.Mode}"/>
+				// 		<input type="hidden" class="form-control" name="CstID_info" value="${data.CstID}"/>
+				// 	`
+				// 	// <input type="hidden" class="form-control" name="SLOT_NO_info" value="${data.SLOT_NO}"/>
+				// } },
+				{ title: "往上<br>加一行", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<button class="AY1-addRow-btn btn btn-sm btn-warning"><i class="fa fa-plus-circle"></i></button>
+						<input type="hidden" class="form-control" name="X_CORD_info" value="${data.X_CORD}"/>
+						<input type="hidden" class="form-control" name="Y_CORD_info" value="${data.Y_CORD}"/>
+						<input type="hidden" class="form-control" name="TARJudge_info" value="${data.TARJudge}"/>
+						<input type="hidden" class="form-control" name="RATIO_info" value="${data.RATIO}"/>
+						<input type="hidden" class="form-control" name="CHIP_SEQ_NO_info" value="${data.CHIP_SEQ_NO}"/>
+						<input type="hidden" class="form-control" name="Mode_info" value="${data.Mode}"/>
+						<input type="hidden" class="form-control" name="CstID_info" value="${data.CstID}"/>
+					`
+					// <input type="hidden" class="form-control" name="SLOT_NO_info" value="${data.SLOT_NO}"/>
+				} },
+				{ title: "SLOT NO", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<input type="hidden" class="form-control" name="SLOT_NO_info" value="${data.SLOT_NO}"/>${data.SLOT_NO}
+					`
+				} },
+				{ title: "TAR", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<input type="hidden" class="form-control" name="TAR_info" value="${data.TAR}"/>${data.TAR}
+					`
+				} },
+				// { title: "CstID", data: null, className: "text-center", render: function(data, type, row, meta) {
+				// 	return `
+				// 		<input type="hidden" class="form-control" name="CstID_info" value="${data.CstID}"/>${data.CstID}
+				// 	`
+				// } },
+				{ title: "SheetID", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<input type="hidden" class="form-control" name="SheetID_info" value="${data.SheetID}"/>${data.SheetID}
+					`
+				} },
+				{ title: "CHIP", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<input type="hidden" class="form-control" name="CHIP_info" value="${data.CHIP}"/>${data.CHIP}
+					`
+				} },
+				// { title: "Mode", data: null, className: "text-center", render: function(data, type, row, meta) {
+				// 	return `
+				// 		<input type="hidden" class="form-control" name="Mode_info" value="${data.Mode}"/>${data.Mode}
+				// 	`
+				// } },
+				{ title: "DefMod", data: null, className: "text-center", render: function(data, type, row, meta) {
+					// return `
+					// 	<input type="hidden" class="form-control" name="DefMod_info" value="${data.DefMod}"/>${data.DefMod}
+					// `
+					DefModList = ['CS_OPEN', 'G-G SHRT', 'GAT OPEN', 'GAT SHRT', 'GCS SHRT', 'GOA OPEN', 'S-G SHRT', 'S-S SHRT', 'SCS SHRT', 'SIG OPEN', 'SIG SHRT', 'GOA SHRT']
+					option = ''
+					DefModList.forEach((DefMod) => {
+						selected = ''
+						if (DefMod == data.DefMod){
+							selected = 'selected'
+						}
+						option = option + `<option value="${DefMod}" ${selected}>${DefMod}</option>`
+					});
+					return `
+						<input type="hidden" class="form-control" name="DefMod_info" value="${data.DefMod}"/>
+						<select name="DefMod_info_input" class="form-control selectpicker" data-live-search="true" data-actions-box="true" title="--請選擇--">
+							${option}
+						</select>
+					`
+				} },
+				{ title: "圖片", data: null, className: "text-center", render: function(data, type, row, meta) {
+					if (data.webImagePath != ''){
+						return '<button class="AY1-viewImage-btn form-control btn btn-sm btn-info" data-toggle="tooltip" data-placement="left" title="<img width=\'100%;\' src=\'' + data.webImagePath + '\'>" data-bs-custom-class="tooltip-custom">預覽</button>';
+					} else {
+						return '查無影像'
+					}
+				} },
+				{ title: "DATA", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<input type="hidden" class="form-control" name="DATA_info" value="${data.DATA}"/>${data.DATA}
+					`
+				} },
+				{ title: "GATE", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<input type="hidden" class="form-control" name="GATE_info" value="${data.GATE}"/>${data.GATE}
+					`
+				} },
+				{ title: "DATA<br>保留", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<input type="number" min="0" max="99999" class="form-control" style="font-size: 16px;" name="DATA_info_input" value=""/>
+					`
+				} },
+				{ title: "GATE<br>保留", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<input type="number" min="0" max="99999" class="form-control" style="font-size: 16px;" name="GATE_info_input" value=""/>
+					`
+				} },
+				{ title: "AT1<br>LOT ID", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<input type="hidden" class="form-control" name="ONELOT_ID_info" value="${data.ONELOT_ID}"/>${data.ONELOT_ID}
+					`
+				} },
+				{ title: "AT1<br>圖片", data: null, className: "text-center", render: function(data, type, row, meta) {
+					if (data.webImagePath_ONELOT_ID != ''){
+						return '<button class="AT1-viewImage-btn form-control btn btn-sm btn-secondary" data-toggle="tooltip" data-placement="right" title="<img width=\'100%;\' src=\'' + data.webImagePath_ONELOT_ID + '\'>" data-bs-custom-class="tooltip-custom">預覽</button>';
+					} else {
+						return '查無影像'
+					}
+				} },
+													
+			],
+			drawCallback: function(settings) {				
+				var rtnhtml = '<i class="fa-regular fa-rectangle-list"></i> 查詢結果，共有 ' + this.api().data().count() + ' 筆資料。';
+				$('#AY1DataQueryResult').html(rtnhtml);
+			},
+			initComplete: function(settings, json) {
+				$('.dataTables_scrollHeadInner, .dataTable').css({'width':'100%'})
+				$('[data-toggle="tooltip"]').tooltip({
+					animated: 'fade',
+					html: true
+				})
+				$('.selectpicker').selectpicker('refresh');
+			},
+			rowCallback: function(row, data, displayNum, displayIndex, dataIndex) {
+				// static 變數模擬：記錄顏色與前一筆值
+				if (typeof window.lastValue === 'undefined') {
+					window.lastValue = null;
+					window.lastColor = '#f7f7f7'; // 初始顏色
+				}
+				
+				var currentValue = data['CHIP'];
+				if (window.lastValue !== currentValue) {
+					// 換顏色
+					window.lastColor = (window.lastColor === '#f7f7f7') ? '#e5e5e5' : '#f7f7f7';
+					window.lastValue = currentValue;
+				}
+
+				$(row).css('background-color', window.lastColor);
+			}
+		});
+		$(table.table().header()).addClass('alert-dark');
+
+		$('#AY1DataTable tbody').on('mouseover', 'tr', function() {
+			$(this).addClass('highlight');
+		});
+
+		$('#AY1DataTable tbody').on('mouseout', 'tr', function() {
+			$(this).removeClass('highlight');
+		});
+
+		$('#AY1DataTable tbody').on('click', '.AY1-delete-btn', function() {
+			var row = table.row($(this).closest('tr'));
+			table.row(row).remove().draw();
+		});
+		
+		$('#AY1DataTable tbody').on('click', '.AY1-addRow-btn', function() {
+			var row = $(this).closest('tr')
+			var rowIndex = row.index()
+			console.log(rowIndex)
+			addDataTableRowData(rowIndex, '')
+			
+		});
+		
+		$('#AY1DataTable tbody').on('click', '.AY1-viewImage-btn', function() {
+			var row = $(this).closest('tr')
+			var rowIndex = row.index()
+			var rowData = table.row(row).data();
+
+			openMapModal(rowIndex, rowData, 'AY1')
+			
+		});		
+		
+		$('#AY1DataTable tbody').on('click', '.AT1-viewImage-btn', function() {
+			var row = $(this).closest('tr')
+			var rowIndex = row.index()
+			var rowData = table.row(row).data();
+
+			openMapModal(rowIndex, rowData, 'AT1')
+			
+		});	
+
+	}
+	
+	// 新增一行
+	function addDataTableRowData(rowIndex, RowData){
+		// 帶預設值或是加點資訊
+		X_CORD_info = '0'
+		if (RowData != ''){
+			X_CORD_info = RowData.X_CORD
+		}
+		Y_CORD_info = '0'
+		if (RowData != ''){
+			Y_CORD_info = RowData.Y_CORD
+		}
+		TARJudge_info = 'B'
+		if (RowData != ''){
+			TARJudge_info = RowData.TARJudge
+		}
+		RATIO_info = '0'
+		if (RowData != ''){
+			RATIO_info = RowData.RATIO
+		}
+		CHIP_SEQ_NO_info = ''
+		if (RowData != ''){
+			CHIP_SEQ_NO_info = RowData.CHIP_SEQ_NO
+		}
+		Mode_info = '0'
+		if (RowData != ''){
+			Mode_info = RowData.Mode
+		}
+		CstID_info = ''
+		if (RowData != ''){
+			CstID_info = RowData.CstID
+		}
+		SLOT_NO_info = ''
+		if (RowData != ''){
+			SLOT_NO_info = RowData.SLOT_NO
+		}
+		TAR_info = ''
+		if (RowData != ''){
+			TAR_info = RowData.TAR
+		}
+		SheetID_info = ''
+		if (RowData != ''){
+			SheetID_info = RowData.SheetID
+		}
+		CHIP_info = ''
+		if (RowData != ''){
+			CHIP_info = RowData.CHIP
+		}
+		DATA_info = ''
+		if (RowData != ''){
+			DATA_info = RowData.newX
+		}
+		GATE_info = ''
+		if (RowData != ''){
+			GATE_info = RowData.newY
+		}
+
+		// 加一行
+		var table = document.getElementById("AY1DataTable");
+		var tbody = table.getElementsByTagName('tbody')[0];
+		var row = tbody.insertRow(rowIndex)
+		row.classList.add("text-center")
+		var deleteBt = row.insertCell(0)
+		var SLOT_NO = row.insertCell(1)
+		var TAR = row.insertCell(2)
+		var SheetID = row.insertCell(3)
+		var CHIP = row.insertCell(4)
+		var DefMod = row.insertCell(5)
+		var img = row.insertCell(6)
+		var DATA = row.insertCell(7)
+		var GATE = row.insertCell(8)
+		var DATA_input = row.insertCell(9)
+		var GATE_input = row.insertCell(10)
+		var AT1LOTID = row.insertCell(11)
+		var AT1img = row.insertCell(12)
+		
+		// deleteBt.innerHTML = `
+		// 	<button class="AY1-delete-btn btn btn-sm btn-danger"><i class="mdi mdi-delete"></i></button>
+		// 	<input type="hidden" class="form-control" name="X_CORD_info" value="0"/>
+		// 	<input type="hidden" class="form-control" name="Y_CORD_info" value="0"/>
+		// 	<input type="hidden" class="form-control" name="TARJudge_info" value="B"/>
+		// 	<input type="hidden" class="form-control" name="RATIO_info" value="0"/>
+		// 	<input type="hidden" class="form-control" name="CHIP_SEQ_NO_info" value=""/>
+		// 	<input type="hidden" class="form-control" name="Mode_info" value="0"/>
+		// 	<input type="hidden" class="form-control" name="CstID_info" value="0"/>
+		// `
+		deleteBt.innerHTML = `
+			<button class="AY1-addRow-btn btn btn-sm btn-info"><i class="fa fa-plus-circle"></i></button>
+			<input type="hidden" class="form-control" name="X_CORD_info" value="${X_CORD_info}"/>
+			<input type="hidden" class="form-control" name="Y_CORD_info" value="${Y_CORD_info}"/>
+			<input type="hidden" class="form-control" name="TARJudge_info" value="${TARJudge_info}"/>
+			<input type="hidden" class="form-control" name="RATIO_info" value="${RATIO_info}"/>
+			<input type="hidden" class="form-control" name="CHIP_SEQ_NO_info" value="${CHIP_SEQ_NO_info}"/>
+			<input type="hidden" class="form-control" name="Mode_info" value="${Mode_info}"/>
+			<input type="hidden" class="form-control" name="CstID_info" value="${CstID_info}"/>
+		`
+		// <input type="hidden" class="form-control" name="SLOT_NO_info" value=""/>
+		
+		SLOT_NO.innerHTML = `<input type="text" class="form-control" name="SLOT_NO_info" value="${SLOT_NO_info}"/>`
+		TAR.innerHTML = `<input type="text" class="form-control" name="TAR_info" value="${TAR_info}"/>`
+		SheetID.innerHTML = `<input type="text" class="form-control" name="SheetID_info" value="${SheetID_info}"/>`
+		CHIP.innerHTML = `<input type="text" class="form-control" name="CHIP_info" value="${CHIP_info}"/>`
+		// DefMod.innerHTML = `<input type="text" class="form-control" name="DefMod_info" value=""/>`
+		DefModList = ['CS_OPEN', 'G-G SHRT', 'GAT OPEN', 'GAT SHRT', 'GCS SHRT', 'GOA OPEN', 'S-G SHRT', 'S-S SHRT', 'SCS SHRT', 'SIG OPEN', 'SIG SHRT']
+		option = ''
+		DefModList.forEach((DefMod) => {
+			selectedState = ''
+			if (RowData != '' && DefMod == RowData.DefMod){
+				selectedState = 'selected'
+			}
+			option = option + `<option value="${DefMod}" ${selectedState}>${DefMod}</option>`
+		});
+		DefMod.innerHTML = `
+			<select name="DefMod_info_input" class="form-control selectpicker" data-live-search="true" data-actions-box="true" title="--請選擇--">
+				${option}
+			</select>
+		`
+		DATA.innerHTML = `<input type="hidden" class="form-control" name="DATA_info" value="${DATA_info}"/>`
+		GATE.innerHTML = `<input type="hidden" class="form-control" name="GATE_info" value="${GATE_info}"/>`
+		DATA_input.innerHTML = `<input type="number" min="0" max="99999" class="form-control" style="font-size: 16px;" name="DATA_info_input" value="${DATA_info}"/>`
+		GATE_input.innerHTML = `<input type="number" min="0" max="99999" class="form-control" style="font-size: 16px;" name="GATE_info_input" value="${GATE_info}"/>`
+		
+		$('.selectpicker').selectpicker('refresh');
+	}
+
+	// 儲存檔案
+	function saveAY1Data(){
+		swal.fire({
+			title: "確認",
+			text: "請確認是否完成修改，儲存檔案!!!",
+			icon: "warning",
+			showCancelButton: true,
+			cancelButtonText: "No",
+		})
+		.then(function(result){
+			if (result.isConfirmed){
+				console.log("Save!!!")
+				// 抓取資訊
+				Lot_ID = document.getElementById('LOT_ID').value
+				TAR_info_List = Array.from(document.getElementsByName('TAR_info'))
+				CstID_info_List = Array.from(document.getElementsByName('CstID_info'))
+				SheetID_info_List = Array.from(document.getElementsByName('SheetID_info'))
+				CHIP_info_List = Array.from(document.getElementsByName('CHIP_info'))
+				Mode_info_List = Array.from(document.getElementsByName('Mode_info'))
+				// DefMod_info_List = Array.from(document.getElementsByName('DefMod_info'))
+				DefMod_info_List = Array.from(document.getElementsByName('DefMod_info_input')) // 下拉
+				DATA_info_List = Array.from(document.getElementsByName('DATA_info')) // 修改前
+				GATE_info_List = Array.from(document.getElementsByName('GATE_info')) // 修改前
+				DATA_info_input_List = Array.from(document.getElementsByName('DATA_info_input')) // 修改後
+				GATE_info_input_List = Array.from(document.getElementsByName('GATE_info_input')) // 修改後
+				X_CORD_info_List = Array.from(document.getElementsByName('X_CORD_info'))
+				Y_CORD_info_List = Array.from(document.getElementsByName('Y_CORD_info'))
+				
+				TARJudge_info_List = Array.from(document.getElementsByName('TARJudge_info'))
+				RATIO_info_List = Array.from(document.getElementsByName('RATIO_info'))
+				CHIP_SEQ_NO_info_List = Array.from(document.getElementsByName('CHIP_SEQ_NO_info'))
+				SLOT_NO_info_List = Array.from(document.getElementsByName('SLOT_NO_info'))
+
+				Data_Info = []
+				SLOT_NO_Map = {
+					'A': '1', 'B': '2', 'C': '3', 'D': '4', 'E': '5', 'F': '6', 'G': '7', 'H': '8', 
+					'J': '9', 'K': '10', 'L': '11', 'M': '12', 'N': '13', 'P': '14', 'Q': '15', 
+					'R': '16', 'S': '17', 'T': '18', 'U': '19', 'V': '20', 'W': '21', 'X': '22', 
+					'Y': '23', 'Z': '24'
+				}
+				CHIP_SEQ_NO_Map = {
+					'A': '1', 'B': '2', 'C': '3', 'D': '4', 'E': '5', 'F': '6', 'G': '7', 'H': '8', 
+					'J': '9', 'K': '10', 'L': '11', 'M': '12', 'N': '13', 'P': '14', 'Q': '15', 
+					'R': '16', 'S': '17', 'T': '18', 'U': '19', 'V': '20', 'W': '21', 'X': '22', 
+					'Y': '23', 'Z': '24', '0': '25', '1': '26', '2': '27', '3': '28', '4': '29', 
+					'5': '30', '6': '31','7': '32', '8': '33', '9': '34'
+				}
+				for (i=0; i<=TAR_info_List.length-1; i++){
+					
+					if (TAR_info_List[i].value == '' || SheetID_info_List[i].value == '' || CHIP_info_List[i].value == '' || Mode_info_List[i].value == '' || DefMod_info_List[i].value == ''){
+						return swal.fire({
+								title: "資料填寫不完整",
+								text: "請確認資料是否填寫完整!!!",
+								icon: "warning",
+								showCancelButton: false,
+							})
+					} else {
+						// 手動新增行數  補資料
+						if (SLOT_NO_info_List[i].value == ''){
+							SLOT_NO_info_List[i].value = SLOT_NO_Map[SheetID_info_List[i].value[SheetID_info_List[i].value.length - 1]]
+						}
+
+						if (CHIP_SEQ_NO_info_List[i].value == ''){
+							CHIP_SEQ_NO_info_List[i].value = CHIP_SEQ_NO_Map[CHIP_info_List[i].value[CHIP_info_List[i].value.length -1]]
+						}
+					}
+
+					if (DATA_info_input_List[i].value != '' && GATE_info_input_List[i].value != ''){
+						Data_Info.push(
+							{
+								"TAR": TAR_info_List[i].value,
+								"CstID": CstID_info_List[i].value,
+								"SheetID": SheetID_info_List[i].value,
+								"ChipID": CHIP_info_List[i].value,
+								"Mode": Mode_info_List[i].value,
+								// "DefMod": DefMod_info_List[i].value,
+								"DefMod": DefMod_info_List[i].options[DefMod_info_List[i].selectedIndex].value,  // 下拉
+								"DATA": DATA_info_input_List[i].value,
+								"GATE": GATE_info_input_List[i].value,
+								"X_CORD": X_CORD_info_List[i].value,
+								"Y_CORD": Y_CORD_info_List[i].value,
+								"TARJudge": TARJudge_info_List[i].value,
+								"RATIO": RATIO_info_List[i].value,
+								"CHIP_SEQ_NO": CHIP_SEQ_NO_info_List[i].value,
+								"SLOT_NO": SLOT_NO_info_List[i].value,
+							}
+						)
+					}
+				}
+
+				console.log(Lot_ID)
+				console.log(Data_Info)
+				if (Data_Info.length > 0){
+					var postdata = {
+						"Action": "runAY1Data",
+						"Lot_ID": Lot_ID,
+						"Data_Info": Data_Info,
+						"UpdateUser": `{{session['User_Info']}}`
+					}
+					
+					$.ajax({
+						method: 'POST',
+						url: `./AVMap_AY1Modify/UpdateData`,
+						data: JSON.stringify(postdata),
+						dataType: 'json',
+						contentType: "application/json; charset-utf-8",
+						beforeSend: function() {
+							$('#loading').fadeIn('slow');
+						},
+						success: function (data) {
+							if (data.alarm_type == 'error'){
+								swal.fire({
+									title: "錯誤",
+									text: data.alarm_msg,
+									icon: data.alarm_type,
+									showCancelButton: false,
+								})
+							} else {
+								
+								swal.fire({
+									title: "修改完成",
+									text: data.alarm_msg,
+									icon: data.alarm_type,
+									showCancelButton: false,
+								}).then(function(result){
+									if (result.isConfirmed){
+										// 清空
+										clearInfo()
+									}
+								})
+
+							}
+							
+							$('#loading').fadeOut('slow');
+						}
+					});
+				} else {
+					swal.fire({
+						title: "資料填寫不完整",
+						text: "請確認資料是否填寫完整!!!",
+						icon: "warning",
+						showCancelButton: false,
+					})
+				}
+				
+
+			}
+		});
+	}
+
+	// 清空
+	function clearInfo(){
+		document.getElementById('LOT_ID').value = ''
+		document.getElementById('AY1Data_Div').style.display = 'none'
+	}
+
+	// ---------------------- MPT 影像操作功能 ----------------------
+	// 開啟 modal
+	function openMapModal(rowIndex, rowData, clickType){
+		// 帶第幾行點進來的
+		document.getElementById('ImageViewerRowIndex').value = rowIndex
+		// 其他資訊
+		document.getElementById('ImageViewerRowData').value = JSON.stringify(rowData)
+
+		if (clickType == 'AY1') {
+			LOTID = document.getElementById('LOT_ID').value
+		} else {
+			LOTID = rowData.ONELOT_ID
+		}		
+		CHIPID = rowData.CHIP
+
+		document.getElementById('ImageViewerTitle').innerHTML = CHIPID
+
+		// 建立影像
+		$.ajax({
+			method: 'get',
+			url: `./AVMap_AY1Modify/GetData?getType=GetAVMapImage&LOTID=${LOTID}&CHIPID=${CHIPID}`,
+			dataType: 'json',
+			contentType: "application/json; charset-utf-8",
+			beforeSend: function() {
+				$('#loading').fadeIn('slow');
+			},
+			success: function (data) {
+				console.log(data)
+				if (data.alarm_type == 'error'){
+					swal.fire({
+						title: "錯誤",
+						text: data.alarm_msg,
+						icon: data.alarm_type,
+						showCancelButton: false,
+					})
+				} else {
+					$('#ImageViewerModal').modal('show')
+
+					ChangeMTPGroupHTML = `
+					<input type="hidden" id="MapImagePath" value="">
+					<input type="hidden" id="MapImageProcessing" value="">
+					`
+					ChangeMTPGroup = document.getElementById('ChangeMTPGroup')
+					for (i=0; i<data.ResultData.AVMapImageList.length; i++){
+						imagePath = data.ResultData.AVMapImageList[i].replace(/\\/g, "/")
+						
+						checkedState = ''
+						if (i == 0) {
+							setTimeout(`createMap('${imagePath}', 'Frist')` , 1000);
+							checkedState = 'checked'
+						}
+
+						// 帶入 MPT 按鈕
+						// ChangeMTPGroupHTML += `
+						// <input type="radio" class="btn-check" name="ChangeMTP" id="ChangeMTP_${i+1}" autocomplete="off" ${checkedState}>
+						// <label class="btn btn-sm btn-outline-secondary" for="ChangeMTP_${i+1}" onclick="createMap('${imagePath}', 'ChangeImage')">MPT${i+1}</label>
+						// `
+						ChangeMTPGroupHTML += `
+						<input type="radio" class="btn-check" name="ChangeMTP" id="ChangeMTP_${i+1}" autocomplete="off" ${checkedState}>
+						<label class="btn btn-sm btn-outline-secondary" for="ChangeMTP_${i+1}" onclick="switchImage('${imagePath}', '')">MPT${i+1}</label>
+						`
+					}
+					
+					ChangeMTPGroup.innerHTML = ChangeMTPGroupHTML
+				}
+				
+				$('#loading').fadeOut('slow');
+			}
+		});
+
+	}
+
+	// 建立影像
+	function createMap(imageName, loadType){
+		// 判斷已有建過就先移掉
+		if (map) {
+			// 清圖片
+			map.remove()
+			window.map = null
+			
+			// 清輸入座標
+			document.getElementById('inputX').value = ''
+			document.getElementById('inputY').value = ''
+
+			if (loadType == 'Frist'){
+				// 清列表
+				document.getElementById('pointItems').innerHTML = ''
+				// 關按鈕
+				document.getElementById('ImageViewerAddBT').style.display = 'none'
+			}
+
+			// 清下拉
+			$("#imagePRocessingDD").val([])
+			$("#imagePRocessingDD").selectpicker("refresh");
+
+		}
+
+		// 帶入圖片資訊
+		document.getElementById('MapImagePath').value = imageName
+		
+		// 抓圖片大小
+		const img = new Image();
+		img.onload = function() {
+			const width = img.naturalWidth;
+			const height = img.naturalHeight;
+			
+			// initiale
+			// window.imageWidth = 11520;  // 替換成實際圖片寬度（像素）
+			// window.imageHeight = 2160; // 替換成實際圖片高度
+			window.imageWidth = width;  // 替換成實際圖片寬度（像素）
+			window.imageHeight = height; // 替換成實際圖片高度
+
+			const bounds_max = [[0 - 100, 0 - 100], [imageHeight + 100, imageWidth + 100]];
+			window.bounds = [[0, 0], [imageHeight, imageWidth]];
+
+			map = L.map(document.getElementById('map'), {
+				crs: L.CRS.Simple,
+				minZoom: -3,
+				maxZoom: 5,
+				maxBounds: bounds_max
+			});
+			
+			// const image = L.imageOverlay(`/static/AVMAP/${imageName}`, bounds).addTo(map);
+			const image = L.imageOverlay(imageName, bounds).addTo(map);
+			map.fitBounds(bounds);
+
+			window.crosshairLines = []; // 儲存目前畫上的十字線
+
+			
+			// 點擊地圖顯示座標
+			map.on('click', function(e) {
+				const coord = e.latlng;
+				const x = Math.round(coord.lng);
+				const y = Math.round(imageHeight - coord.lat); // 翻轉 Y 軸，原點從左上開始算
+
+				// 判斷是否超出原影像大小
+				if (x < 0 || x > imageWidth || y < 0 || y > imageHeight) {
+					Swal.fire({
+						title: '點超過影像拉~~~',
+						icon: 'warning',
+						allowOutsideClick: false
+					})
+					return;
+				}
+
+				// 跳出 tooltip
+				L.popup({
+					offset: [-30, -30]  // 位移，免擋住 Defect
+				})
+					.setLatLng(coord)
+					.setContent(`
+						座標: (${x}, ${y})
+						<button type="button" class="form-control btn btn-sm btn-success mt-1" onclick="addPointToList(${x}, ${y})">
+							<i class="fa-solid fa-plus"></i> 新增
+						</button>
+					`)
+					.openOn(map);
+				
+				// 帶入移動座標輸入框
+				document.getElementById('inputX').value = x
+				document.getElementById('inputY').value = y
+
+				// 清除先前的十字線
+				crosshairLines.forEach(line => map.removeLayer(line));
+				crosshairLines = [];
+
+				const lat = e.latlng.lat;
+				const lng = e.latlng.lng;
+
+				// 水平線：從最左到最右，經過該點的 y
+				const hLine = L.polyline([
+					[lat, lng - 50],
+					[lat, lng + 50]
+				], { 
+					color: 'red', 
+					weight: 1,
+					interactive: false, // 關掉滑鼠互動功能
+				}).addTo(map);
+
+				// 垂直線：從最下到最上，經過該點的 x
+				const vLine = L.polyline([
+					[lat - 50, lng],
+					[lat + 50, lng]
+				], { 
+					color: 'red', 
+					weight: 1,
+					interactive: false, // 關掉滑鼠互動功能
+				}).addTo(map);
+
+				// ⊙ 中央圓形
+				const centerDot = L.circleMarker([lat, lng], {
+					radius: 20,             // 圓的大小（畫素半徑）
+					color: 'red',          // 邊框色
+					fillColor: 'transparent',      // 透明
+					fillOpacity: 0,
+					weight: 1,
+					interactive: false, // 關掉滑鼠互動功能
+				}).addTo(map);
+
+				crosshairLines = [hLine, vLine, centerDot];
+			});
+		};
+		img.onerror = function() {
+			console.error('圖片載入失敗:', imageName);
+			Swal.fire({
+				title: '圖片載入失敗~~~',
+				icon: 'error',
+				allowOutsideClick: false
+			})
+		};
+		img.src = imageName;
+	}
+
+	// 移動座標
+	function moveToCoordinate(inputX, inputY) {
+		if (inputX == '' && inputY == ''){
+			inputX = parseInt(document.getElementById('inputX').value);
+			inputY = parseInt(document.getElementById('inputY').value);
+		} else {
+			document.getElementById('inputX').value = inputX
+			document.getElementById('inputY').value = inputY
+		}
+
+		if (isNaN(inputX) || isNaN(inputY)) {
+			Swal.fire({
+				title: '請輸入有效的數字座標',
+				icon: 'warning',
+				allowOutsideClick: false
+			})
+			return;
+		}
+
+		const leafletY = imageHeight - inputY;
+		const leafletX = inputX;
+
+		const targetLatLng = L.latLng(leafletY, leafletX);
+
+		// ✅ 同時設定中心與縮放層級
+		map.setView(targetLatLng, 1);  // zoom level 可依需要調整
+
+		L.popup({
+			offset: [-30, -30]  // 位移，免擋住 Defect
+		})
+			.setLatLng(targetLatLng)
+			.setContent(`
+				座標: (${inputX}, ${inputY})
+				<button type="button" class="form-control btn btn-sm btn-success mt-1" onclick="addPointToList(${inputX}, ${inputY})">
+					<i class="fa-solid fa-plus"></i> 新增
+				</button>
+			`)
+			.openOn(map);
+
+		// 清除舊十字線
+		crosshairLines.forEach(line => map.removeLayer(line));
+		crosshairLines = [];
+
+		// 十字線
+		const hLine = L.polyline([
+			[leafletY, leafletX - 50],
+			[leafletY, leafletX + 50]
+		], { 
+			color: 'blue',
+			weight: 1,
+			interactive: false, // 關掉滑鼠互動功能
+		}).addTo(map);
+
+		const vLine = L.polyline([
+			[leafletY - 50, leafletX],
+			[leafletY + 50, leafletX]
+		], { 
+			color: 'blue', 
+			weight: 1,
+			interactive: false, // 關掉滑鼠互動功能
+		}).addTo(map);
+
+		// ⊙ 中央圓形
+		const centerDot = L.circleMarker([leafletY, leafletX], {
+			radius: 20,             // 圓的大小（畫素半徑）
+			color: 'blue',          // 邊框色
+			fillColor: 'transparent',      // 透明
+			fillOpacity: 0,
+			weight: 1,
+			interactive: false, // 關掉滑鼠互動功能
+		}).addTo(map);
+
+		crosshairLines = [hLine, vLine, centerDot];
+	}
+	
+	// 點擊清單
+	function addPointToList(x, y) {
+		// 加入新資料
+		const ul = document.getElementById('pointItems');
+		const li = document.createElement('li');
+		li.style.marginBottom = '4px';
+
+		// 建立座標文字 + 按鈕區
+		li.innerHTML = `
+			<div class="row">
+				<input type="hidden" name="CoordinateX" value="${x}">
+				<input type="hidden" name="CoordinateY" value="${y}">
+				<div class="col-1 text-start">
+					<button type="button" class="form-control btn btn-sm btn-danger" onclick="removePoint(this)">
+						<i class="fa-regular fa-trash-can"></i>
+					</button>
+				</div>
+				<div class="col-2 text-start">
+					<button type="button" class="form-control btn btn-sm btn-info" onclick="moveToCoordinate(${x}, ${y})">
+						<i class="fa-solid fa-compress"></i> 移動
+					</button>
+				</div>
+				<div class="col-9 text-start">
+					<h3>座標資訊：(${x}, ${y})</h3>
+				</div>
+			</div>
+		`;
+
+		ul.appendChild(li);
+
+		// 自動滾到最下面
+		ul.scrollTop = ul.scrollHeight
+
+		// 判斷LIST有無資料
+		const CoordinateXInputs = document.querySelectorAll('input[name="CoordinateX"][type="hidden"]')
+		const CoordinateXInputsValues = Array.from(CoordinateXInputs).map(input => input.value);
+		if (CoordinateXInputsValues != null && CoordinateXInputsValues.length > 0){
+			document.getElementById('ImageViewerAddBT').style.display = ''
+		}
+		
+	}
+
+	// 刪除列表資訊
+	function removePoint(button) {
+		const li = button.closest('li');
+		if (li) {
+			li.remove();
+		}
+		
+		// 判斷LIST有無資料
+		const CoordinateXInputs = document.querySelectorAll('input[name="CoordinateX"][type="hidden"]')
+		const CoordinateXInputsValues = Array.from(CoordinateXInputs).map(input => input.value);
+		if (CoordinateXInputsValues.length <= 0){
+			document.getElementById('ImageViewerAddBT').style.display = 'none'
+		}
+	}
+
+	// 加點
+	function ImageViewerAddPoint(){
+		const CoordinateXInputs = document.querySelectorAll('input[name="CoordinateX"][type="hidden"]')
+		const CoordinateXInputsValues = Array.from(CoordinateXInputs).map(input => input.value);
+
+		const CoordinateYInputs = document.querySelectorAll('input[name="CoordinateY"][type="hidden"]')
+		const CoordinateYInputsValues = Array.from(CoordinateYInputs).map(input => input.value);
+
+		ImageViewerRowIndex = document.getElementById('ImageViewerRowIndex').value
+		
+		jsonStr = $('#ImageViewerRowData').val();
+		RowData = JSON.parse(jsonStr);
+
+		for (i=0; i<CoordinateXInputsValues.length; i++){
+			RowData.newX = CoordinateXInputsValues[i]
+			RowData.newY = CoordinateYInputsValues[i]
+			
+			addDataTableRowData(ImageViewerRowIndex, RowData)
+		}
+
+		$('#ImageViewerModal').modal('hide')
+	}
+
+	// 圖片切換
+	function switchImage(imagePath, imageProcessing) {
+		// 判斷是點MPT 還是 調色盤
+		if (imagePath == ''){  // 點調色盤
+			imagePath = document.getElementById('MapImagePath').value
+			document.getElementById('MapImageProcessing').value = imageProcessing
+		} else if (imageProcessing == ''){  // 點MPT
+			document.getElementById('MapImagePath').value = imagePath
+			imageProcessing = document.getElementById('MapImageProcessing').value
+		}
+		
+		if (imageProcessing == '銳化'){
+			insertFolder = 'sharpened';
+			parts = imagePath.split('/');
+			// 找到倒數第二個資料夾名稱，插入資料夾
+			imagePath = [...parts.slice(0, -1), insertFolder, parts[parts.length - 1]].join('/');
+		} else if (imageProcessing == '灰階'){
+			insertFolder = 'gray';
+			parts = imagePath.split('/');
+			// 找到倒數第二個資料夾名稱，插入資料夾
+			imagePath = [...parts.slice(0, -1), insertFolder, parts[parts.length - 1]].join('/');
+		}
+
+		// 記錄目前中心與縮放
+		const currentCenter = map.getCenter();
+		const currentZoom = map.getZoom();
+
+		// 移除前一張 overlay
+		if (currentOverlay) {
+			map.removeLayer(currentOverlay);
+		}
+
+		// 加入新圖片
+		currentOverlay = L.imageOverlay(imagePath, bounds).addTo(map);
+
+		// 還原視角與縮放
+		map.setView(currentCenter, currentZoom);
+	}
+	
+	// -------------------------------------------------------------
+
+	// ---------------------- AVMAP HOLD List ----------------------
+	// HOLD LIST
+	function runHoldAvmapDataTable(){
+		// 在重新渲染表格前先清空表格內容
+		if ($.fn.DataTable.isDataTable(`#HoldAvmapDataTable`)) {
+			$(`#HoldAvmapDataTable`).DataTable().destroy();
+			$(`#HoldAvmapDataTable`).empty();
+		} 
+		$('#HoldAvmapDataTable').attr('class', '')
+		$('#HoldAvmapDataTable').addClass("table table-hover responsive table-striped auto-height-table_wrapper");
+		var table = $('#HoldAvmapDataTable').DataTable({"preXhr": function ( e, settings, data ) {
+				$('#loading').fadeIn('slow');
+			},
+			//responsive: true,
+			// searching: false,
+			retrieve: false,
+			destroy: true,
+			paging: false, // 關閉分頁功能
+			autoWidth: true,
+			scrollX: true,
+			scrollY: 80,
+			// sScrollY: 'calc(100vh - 420px)',
+			language: {
+				"emptyTable": "目前無待定位 LOT",
+			},
+    		dom: "<'table-responsive' tr>",
+			order: [
+				[11, "asc"]
+			],
+    		ajax: {
+    			url : `../AVMap_AY1Modify/GetData?getType=HoldAvmapResultList`,
+    			data: function (d) {
+    				return JSON.stringify(d);
+    			},
+    			type: "get",
+    			contentType: "application/json; charset=utf-8",
+    			dataSrc: "ResultData"
+    		},
+			columns: [
+    			{ title: "CST", data: "CASSETTE_ID", className: "text-center"},
+    			{ title: "ABBR", data: "ABBR_NO", className: "text-center"},
+    			{ title: "LOT ID", data: null, className: "text-center", render: function(data, type, row, meta) {
+					return `
+						<a onclick="keyInLot('${data.LOT_ID}')" style="color: blue; text-decoration: underline; cursor: pointer;">${data.LOT_ID}</a>
+					`
+				} },
+    			{ title: "產品", data: "MODEL_NO", className: "text-center"},
+    			{ title: "OP_ID", data: "OP_ID", className: "text-center"},
+    			{ title: "TYPE", data: "LOT_TYPE", className: "text-center"},
+    			{ title: "片數", data: "SHEET_QTY", className: "text-center"},
+    			{ title: "狀態", data: "LOT_STATUS", className: "text-center"},
+    			{ title: "重要性", data: "LOT_PRIORITY", className: "text-center"},
+    			{ title: "EQP", data: "EQP_ID", className: "text-center"},
+    			{ title: "Dept", data: "RESPONSE_DEPT", className: "text-center"},
+    			{ title: "Hold Time", data: "HOLD_TRANS_TIMESTAMP", className: "text-center"},
+    			{ title: "HOLD NOTE", data: "HOLD_NOTE", className: "text-center"},
+				{ title: "Flow map", data: null, className: "text-center", render: function(data, type, row, meta) {
+					FlowMapState = 'success'
+					if (data.FlowMapState == 'NG'){
+						FlowMapState = 'danger'
+					}
+
+					return `
+						<span class="badge rounded-pill alert-${FlowMapState}">${data.FlowMapState}</span>
+					`
+					
+				} },
+			],
+			drawCallback: function(settings) {				
+				var rtnhtml = '<i class="fa-regular fa-rectangle-list"></i> 查詢結果，共有 ' + this.api().data().count() + ' 筆資料。';
+				// $('#AVMAPModifyPointRowDataQueryResult').html(rtnhtml);
+			},
+			initComplete: function(settings, json) {
+				$('.dataTables_scrollHeadInner, .dataTable').css({'width':'100%'})
+				$('.dataTables_scrollBody, .dataTable').css(
+					{
+						'max-height': 'calc(100vh - 400px)',
+						'overflow-y': 'auto',
+					}
+				)
+				$('[data-toggle="tooltip"]').tooltip({
+					animated: 'fade',
+					html: true
+				})
+			},
+			rowCallback: function(row, data, displayNum, displayIndex, dataIndex) {
+				// 初始顏色
+				backgroudColor = 'white'
+				var currentValue = data['LOT_STATUS'];
+				// 換顏色
+				if (currentValue == 'INPR') {
+					backgroudColor = 'DarkTurquoise'
+				} else if (currentValue == 'FTHD' || currentValue == 'HLDL') {
+					backgroudColor = 'Khaki'
+				}
+
+				$(row).css('background-color', backgroudColor);
+			}
+		});
+		$(table.table().header()).addClass('alert-dark');
+
+		// 定期更新
+		setInterval(function(){
+			table.ajax.reload(null, true)
+		}, 30000)
+	}
+
+	// 帶入 LOT，查詢
+	function keyInLot(LOTID){
+		document.getElementById('LOT_ID').value = LOTID
+
+		selectAY1Data()
+	}
+
+	// -------------------------------------------------------------
+
+</script>
+
+{% endblock %}
